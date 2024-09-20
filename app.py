@@ -5,100 +5,65 @@ import io
 import time
 
 from dataframe_loader import DataFrameLoader as df_loader
-from custom_widgets import SidebarWidget as sidebar
+from custom_widgets import SidebarWidget, GraphWidget
+
+from data_manager import DataManager
 
 # Initialize Panel
-pn.extension(sizing_mode="stretch_width", design="fast")
+pn.extension(sizing_mode="stretch_width", design="material")
 
-class graph():
-    _graph = pn.pane.HoloViews()
+# Bring in DataManager to handle multiple dataframes easily
+data_manager = DataManager()
 
-    def update_graph(data, x_col, y_col, plot_type, color):
-        if x_col and y_col and plot_type:
-            return data.hvplot(x=x_col, y=y_col, kind=plot_type, color=color)
-        return None
-    
-    def init_graph(self):
-        print(f"Plotting Initialized: {file_data_dataframe.empty}, {file_data_dataframe.columns}")
-        # Update x_col and y_col options when the file is uploaded
-        if not file_data_dataframe.empty and 'Error' not in file_data_dataframe.columns:
-            print("Plotting Continues! File data is not empty and has no errors")
-            x_col.options = list(file_data_dataframe.columns)
-            y_col.options = list(file_data_dataframe.columns)
-            # Plot the graph and update the graph area
-            print("Plotting Data Now")
-            _graph = update_graph(file_data_dataframe, x_col.value, y_col.value, plot_type.value, color.value)
-    
-    def get_graph(self):
-        return self._graph
-
-# Create a function to update the graph based on user settings
-def update_graph(data, x_col, y_col, plot_type, color):
-    if x_col and y_col and plot_type:
-        return data.hvplot(x=x_col, y=y_col, kind=plot_type, color=color)
-    return None
-
-# Widgets for user input
 # Bring in sidebar widgets
-sidebar_widgets = sidebar()
-#global file_data_dataframe
+sidebar_widgets = SidebarWidget()
+graph_widget = GraphWidget()
 
-#file_input = pn.widgets.FileInput(name="Upload CSV File")
-x_col = pn.widgets.Select(name='X-Axis', options=[])
-y_col = pn.widgets.Select(name='Y-Axis', options=[])
-plot_type = pn.widgets.Select(name='Plot Type', options=['line', 'scatter', 'bar', 'area'])
-color = pn.widgets.ColorPicker(name='Color', value='#1f77b4')
-#plot_button = pn.widgets.Button(name='Plot Graph', button_type='primary')  # Button to trigger graphing
-#load_data_button = pn.widgets.Button(name='Load CSV', button_type='primary')
-# Placeholder for the graph
-graph_area = pn.pane.HoloViews()
+def get_data():
+    pass
 
-def load_data_on_click(event):
+def load_data(event):
     # Load data from the uploaded file
     print(f"file_input value: {sidebar_widgets.file_input.filename}")
     # Read the file content into a DataFrame if it's uploaded
     loader = df_loader()            
-    global file_data_dataframe
     file_data_dataframe = loader.convert_to_dataframe(file_data=sidebar_widgets.file_input.value)
+    
+    file_key = loader.find_associated_logger_location(sidebar_widgets.file_input.filename)
+    print(f"file key: {file_key}")
+    data_manager.add_df(file_key, file_data_dataframe)
+    data_manager.convert_datetime_column(file_key, "Date-Time (CDT)")
+    #data_manager.set_column_as_index(file_key, "#")
     print(file_data_dataframe.head())
 
-# Function to be called when button is clicked
-def on_plot_click(event):
-    pass
+    graph_widget.setup_graph(data_manager.get_df(file_key))
+    #graph_widget.update_graph_visuals()
 
-#bound_plot = pn.bind(update_graph,
-#                     data=file_data_dataframe,
-#                     x_col=x_col,
-#                     y_col=y_col,
-#                     plot_type=plot_type,
-#                     color=color)
 
 # Attach the function to the button click event
-sidebar_widgets.plot_button.on_click(on_plot_click)
-sidebar_widgets.load_data_button.on_click(load_data_on_click)
+sidebar_widgets.file_input.param.watch(load_data, 'value')
 
-# Layout the app
-#app = pn.Column(
-#    file_input,
-#    pn.Row(x_col, y_col, plot_type, color),
-#    load_data_button,
-#    plot_button,
-#    graph_area
-#)
 widget_column = pn.Column(
-    sidebar_widgets.file_input,
-    sidebar_widgets.load_data_button,
-    sidebar_widgets.plot_button
+    sidebar_widgets.file_input
 )
 
-pn.Row(widget_column, graph_area).servable()
+graph_options_column = pn.Column(
+    graph_widget.x_col,
+    graph_widget.y_col,
+    pn.Row(graph_widget.plot_type, graph_widget.color)
+)
 
-#pn.template.MaterialTemplate(
-#    site="Panel",
-#    title="CSV Visualizer",
-#    sidebar=[pn.Column(sidebar_widgets.file_input,
-#                       sidebar_widgets.load_data_button,
-#                       sidebar_widgets.plot_button)],
-#    main=[graph_area]
-#).servable()
+graph_display = pn.bind(graph_widget.update_graph_visuals, 
+                    x_col=graph_widget.x_col, 
+                    y_col=graph_widget.y_col, 
+                    plot_type=graph_widget.plot_type, 
+                    color=graph_widget.color)
 
+app = pn.template.MaterialTemplate(
+    site="panel",
+    title="CSV Visualizer",
+    sidebar=[widget_column, graph_options_column],
+    main=[graph_display]
+)
+
+app.servable()

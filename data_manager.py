@@ -34,7 +34,13 @@ class DataManager():
         return self.data_dict[key]
     
     def convert_datetime_column(self, key: str, column_name: str) -> bool:
-        self.data_dict[key] = pd.to_datetime(self.data_dict[key])
+        #print(self.data_dict[key])
+        try: 
+            self.data_dict[key][column_name] = pd.to_datetime(self.data_dict[key][column_name], format="%m/%d/%Y %H:%M:%S", errors="coerce")
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
     def set_column_as_index(self, key: str, column_name: str) -> bool:
         """
