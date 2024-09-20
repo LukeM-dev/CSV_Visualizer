@@ -8,7 +8,29 @@ from dataframe_loader import DataFrameLoader as df_loader
 from custom_widgets import SidebarWidget as sidebar
 
 # Initialize Panel
-pn.extension(sizing_mode="stretch_width", design="material")
+pn.extension(sizing_mode="stretch_width", design="fast")
+
+class graph():
+    _graph = pn.pane.HoloViews()
+
+    def update_graph(data, x_col, y_col, plot_type, color):
+        if x_col and y_col and plot_type:
+            return data.hvplot(x=x_col, y=y_col, kind=plot_type, color=color)
+        return None
+    
+    def init_graph(self):
+        print(f"Plotting Initialized: {file_data_dataframe.empty}, {file_data_dataframe.columns}")
+        # Update x_col and y_col options when the file is uploaded
+        if not file_data_dataframe.empty and 'Error' not in file_data_dataframe.columns:
+            print("Plotting Continues! File data is not empty and has no errors")
+            x_col.options = list(file_data_dataframe.columns)
+            y_col.options = list(file_data_dataframe.columns)
+            # Plot the graph and update the graph area
+            print("Plotting Data Now")
+            _graph = update_graph(file_data_dataframe, x_col.value, y_col.value, plot_type.value, color.value)
+    
+    def get_graph(self):
+        return self._graph
 
 # Create a function to update the graph based on user settings
 def update_graph(data, x_col, y_col, plot_type, color):
@@ -42,17 +64,7 @@ def load_data_on_click(event):
 
 # Function to be called when button is clicked
 def on_plot_click(event):
-    print(f"Plotting Initialized: {file_data_dataframe.empty}, {file_data_dataframe.columns}")
-    # Update x_col and y_col options when the file is uploaded
-    if not file_data_dataframe.empty and 'Error' not in file_data_dataframe.columns:
-        print("Plotting Continues! File data is not empty and has no errors")
-        x_col.options = list(file_data_dataframe.columns)
-        y_col.options = list(file_data_dataframe.columns)
-        # Plot the graph and update the graph area
-        print("Plotting Data Now")
-        graph = update_graph(file_data_dataframe, x_col.value, y_col.value, plot_type.value, color.value)
-        print("Generated Plot, Serving to GUI now")
-        graph_area = graph
+    pass
 
 #bound_plot = pn.bind(update_graph,
 #                     data=file_data_dataframe,
@@ -73,13 +85,20 @@ sidebar_widgets.load_data_button.on_click(load_data_on_click)
 #    plot_button,
 #    graph_area
 #)
+widget_column = pn.Column(
+    sidebar_widgets.file_input,
+    sidebar_widgets.load_data_button,
+    sidebar_widgets.plot_button
+)
 
-pn.template.MaterialTemplate(
-    site="Panel",
-    title="CSV Visualizer",
-    sidebar=[pn.Column(sidebar_widgets.file_input,
-                       sidebar_widgets.load_data_button,
-                       sidebar_widgets.plot_button)],
-    main=[graph_area]
-).servable()
+pn.Row(widget_column, graph_area).servable()
+
+#pn.template.MaterialTemplate(
+#    site="Panel",
+#    title="CSV Visualizer",
+#    sidebar=[pn.Column(sidebar_widgets.file_input,
+#                       sidebar_widgets.load_data_button,
+#                       sidebar_widgets.plot_button)],
+#    main=[graph_area]
+#).servable()
 

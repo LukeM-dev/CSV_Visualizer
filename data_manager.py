@@ -33,21 +33,38 @@ class DataManager():
     def get_df(self, key: str) -> pd.DataFrame:
         return self.data_dict[key]
     
-    def convert_datetime_column(self, key: str) -> bool:
-        pass
+    def convert_datetime_column(self, key: str, column_name: str) -> bool:
+        self.data_dict[key] = pd.to_datetime(self.data_dict[key])
 
-    def set_column_as_index(self, key: str) -> bool: 
-        self.data_dict[key].
+    def set_column_as_index(self, key: str, column_name: str) -> bool:
+        """
+        Sets the specified column as the index for the DataFrame associated with the given key.
+        :param key: The key to the DataFrame in data_dict.
+        :param column_name: The column to be set as the index.
+        :return: True if successful, False if any error occurs.
+        """
 
-    def get_all_df_columns(self):
-        """returns a list of the columns that all Excel files share"""
-        columns_set = set()
-        for key, value in self.data_dict:
-            columns_set.intersection_update(value.columns)
-        return list(columns_set)
+        if key not in self.data_dict:
+            print(f"Key '{key}' not found in data_dict.")
+            return False
+        elif column_name not in self.data_dict[key].columns:
+            print(f"Column '{column_name}' not found in DataFrame '{key}'.")
+            return False
+
+        df = self.data_dict[key]
+        try:
+            df.set_index(column_name, inplace=True)
+            print(f"Column '{column_name}' set as index for DataFrame '{key}'.")
+            return True
+        except Exception as e:
+            print(f"Error setting column '{column_name}' as index: {str(e)}")
+            return False
 
     def merge_all_df(self) -> pd.DataFrame:
-        """Leaving this method here, but empty because it might be useful in the future for me to do, but as of right now, its not going to help"""
+        """
+        Leaving this method here, but empty because it might be useful in the future for me to do, 
+        but as of right now, its not going to help
+        """
         pass
 
     def get_all_keys(self) -> list:
