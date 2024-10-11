@@ -18,24 +18,27 @@ class GraphManager(param.Parameterized):
     def load_csv_file_data(self, file_path):
         # Check if the file exists before attempting to read it
         if not file_path.exists():
-            self.debug_pane.object = f"File not found: {file_path}"
+            self.debug_pane.object = f"load_csv: File not found: {file_path}"
             return None
         
         if file_path.suffix != '.csv':
-            self.debug_pane.object = "Unsupported file type. Please select a CSV file."
+            self.debug_pane.object = "load_csv: Unsupported file type. Please select a CSV file."
             return None
         
         try:
-            # Load the CSV file into a pandas DataFrame
-            return pd.read_csv(file_path)
+            df = pd.read_csv(file_path)
+            if df.empty:
+                self.debug_pane.object = f"The file {file_path.name} is empty."
+                return None
+            return df
         except pd.errors.EmptyDataError:
-            self.debug_pane.object = "Error: The file is empty or malformed."
+            self.debug_pane.object = "load_csv: Error: The file is empty or malformed."
             return None
         except pd.errors.ParserError as e:
-            self.debug_pane.object = f"Error: Failed to parse the CSV file. Details: {e}"
+            self.debug_pane.object = f"load_csv: Error: Failed to parse the CSV file. Details: {e}"
             return None
         except Exception as e:
-            self.debug_pane.object = f"An error occurred while processing the file: {e}"
+            self.debug_pane.object = f"load_csv: An error occurred while processing the file: {e}"
             return None
 
     def plot_file(self, file_path: Path, unselected=False):
@@ -63,28 +66,30 @@ class GraphManager(param.Parameterized):
 
         for idx, (df, file_name) in enumerate(self.dataframes):
             # Check that the required columns exist
-            if "Date-Time (CDT)" in df.columns and "Temperature (°F)" in df.columns:
-                plot = df.hvplot(x="Date-Time (CDT)", y="Temperature (°F)", label=file_name)
+            if "Date-Time (CDT)" in df.columns and "Temperature (°F) " in df.columns:
+                plot = df.hvplot(x="Date-Time (CDT)", y="Temperature (°F) ", label=file_name)
                 
                 if self.combined_plot is None:
                     self.combined_plot = plot  # Initialize with the first plot
                 else:
                     self.combined_plot *= plot  # Overlay additional plots
             else:
-                self.debug_pane.object = f"DataFrame {file_name} missing required columns."
+                self.debug_pane.object = f"Update Plots: DataFrame {file_name} missing required columns."
 
-        if self.combined_plot is not None:
-            self.plot_pane.object = self.combined_plot.opts(
-                title="Combined Plot",
-                xlabel="Date-Time (CDT)",
-                ylabel="Temperature (°F)",
-                legend_position="top_left"
-            )
-        else:
-            self.plot_pane.object = "No valid plots to display."
+        #if self.combined_plot is not None and self.combined_plot is not type(str):
+        #    self.plot_pane.object = self.combined_plot.opts(
+        #        title="Combined Plot",
+        #        xlabel="Date-Time (CDT) ",
+        #        ylabel="Temperature (°F)",
+        #        #legend_position="top_left"
+        #    )
+        #else:
+        #    self.debug_pane.object.join("test")# = "\n Update Plots: No valid plots to display."
         
         # Debug info: number of dataframes being plotted
-        print(f'Now showing plots for {len(self.dataframes)} dataframes')
+        if self.combined_plot is not None and self.combined_plot is not type(str):
+            self.plot_pane.object = self.combined_plot
+        print(f'Update Plots: Now showing plots for {len(self.dataframes)} dataframes')
 
     
     

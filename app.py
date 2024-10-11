@@ -34,11 +34,12 @@ sidebar_col = pn.Column(
 
 main_graph_col = pn.Column(
     sidebar_col,
-    graph_manager.combined_plot,
-    graph_manager.debug_pane
+    graph_manager.plot_pane,
+    graph_manager.debug_pane,
+    sizing_mode="stretch_both"
 )
 
-template = pn.template.FastGridTemplate(
+template = pn.template.FastListTemplate(
     title="CSV Visualizer",
     #sidebar=[sidebar_col],
     main=pn.Row(
