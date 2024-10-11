@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import hvplot.pandas
 
-from widgets import SidebarWidget
+from widgets import SidebarWidget, GraphEditWidget
 from graph_manager import GraphManager
 
 # Initialize Panel
@@ -20,6 +20,9 @@ def on_file_selected(file_name, unselected=False):
     file_path = folder_path / file_name
     graph_manager.plot_file(file_path, unselected=unselected)
 
+def grab_graph_columns():
+    pass
+
 # Initialize Widgets
 sidebar_widget = SidebarWidget(folder_path=folder_path, on_file_selected_callback=on_file_selected)
 
@@ -29,7 +32,9 @@ pn.state.add_periodic_callback(sidebar_widget.update_checkbox_options, period=20
 # Layout the Panel app
 sidebar_col = pn.Column(
     pn.pane.Markdown("### File Selector"),
-    sidebar_widget.checkbox,
+    pn.Row(sidebar_widget.checkbox,
+           graph_manager.graph_editor.datetime_selector
+    )
 )
 
 main_graph_col = pn.Column(

@@ -45,7 +45,10 @@ class SidebarWidget(param.Parameterized):
         return self.checkbox
 
 class GraphEditWidget(param.Parameterized):
+    datetime_selector = pn.widgets.Select(name="Select Datetime Column", options=[])
     x_col = pn.widgets.Select(name='X-Axis', options=[])
     y_col = pn.widgets.Select(name='Y-Axis', options=[])
     plot_type = pn.widgets.Select(name='Plot Type', options=['line', 'scatter', 'bar', 'area'])
     color = pn.widgets.ColorPicker(name='Color', value='#1f77b4')
+    
+    

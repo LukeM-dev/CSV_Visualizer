@@ -6,6 +6,8 @@ import holoviews as hv
 import param
 from pathlib import Path
 
+from widgets import GraphEditWidget
+
 class GraphManager(param.Parameterized):
     
     def __init__(self, **params):
@@ -14,6 +16,32 @@ class GraphManager(param.Parameterized):
         self.debug_pane = pn.pane.Str()
         self.dataframes = []  # List of (DataFrame, file_name) tuples
         self.combined_plot = None
+        
+        self.graph_editor = GraphEditWidget()
+        self.graph_editor.datetime_selector.param.watch(self.on_datetime_column_selected, 'value')
+        self.selected_datetime_column = ""
+        
+    def on_datetime_column_selected(self, event):
+        """
+        Callback when the user selects a datetime column. Converts the selected column to datetime.
+        """
+        self.selected_datetime_column = event.new  # Get the new selected column name
+        
+        self.convert_column_to_datetime_format(selected_column=self.selected_datetime_column)
+
+        # Update the plot to reflect the new datetime column
+        self.update_combined_plot()    
+
+    def convert_column_to_datetime_format(self, selected_column):
+        for idx, (df, file_name) in enumerate(self.dataframes):
+            if selected_column in df.columns:
+                # Convert the selected column to datetime
+                df[selected_column] = pd.to_datetime(df[selected_column], errors='coerce')
+                self.debug_pane.object = f"Converted {selected_column} to datetime for file: {file_name}"
+                self.datetime_column_selected = True
+            else:
+                self.debug_pane.object = f"{selected_column} not found in DataFrame for {file_name}"
+                self.datetime_column_selected = True
 
     def load_csv_file_data(self, file_path):
         # Check if the file exists before attempting to read it
@@ -25,11 +53,15 @@ class GraphManager(param.Parameterized):
             self.debug_pane.object = "load_csv: Unsupported file type. Please select a CSV file."
             return None
         
-        try:
+        try: 
             df = pd.read_csv(file_path)
+                
             if df.empty:
                 self.debug_pane.object = f"The file {file_path.name} is empty."
                 return None
+            
+            self.graph_editor.datetime_selector.options = df.columns.tolist()
+           
             return df
         except pd.errors.EmptyDataError:
             self.debug_pane.object = "load_csv: Error: The file is empty or malformed."
@@ -66,15 +98,23 @@ class GraphManager(param.Parameterized):
 
         for idx, (df, file_name) in enumerate(self.dataframes):
             # Check that the required columns exist
-            if "Date-Time (CDT)" in df.columns and "Temperature (°F) " in df.columns:
-                plot = df.hvplot(x="Date-Time (CDT)", y="Temperature (°F) ", label=file_name)
-                
-                if self.combined_plot is None:
-                    self.combined_plot = plot  # Initialize with the first plot
-                else:
-                    self.combined_plot *= plot  # Overlay additional plots
+            datetime_col = self.graph_editor.datetime_selector.value
+            
+            if self.selected_datetime_column is not "":
+                self.convert_column_to_datetime_format(self.selected_datetime_column)
+            else: 
+                self.debug_pane.object = f"update combined plot: Error: could not convert datetime column"
+
+            if datetime_col and datetime_col in df.columns:
+                plot = df.hvplot(x=datetime_col, y="Temperature (°F) ", label=file_name)
             else:
-                self.debug_pane.object = f"Update Plots: DataFrame {file_name} missing required columns."
+                plot = df.hvplot(x=df.columns[0], y="Temperature (°F) ", label=file_name)  # Default x-axis
+
+                
+            if self.combined_plot is None:
+                self.combined_plot = plot  # Initialize with the first plot
+            else:
+                self.combined_plot *= plot  # Overlay additional plots
 
         #if self.combined_plot is not None and self.combined_plot is not type(str):
         #    self.plot_pane.object = self.combined_plot.opts(
