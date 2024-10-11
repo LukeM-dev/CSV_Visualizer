@@ -33,13 +33,14 @@ sidebar_col = pn.Column(
 )
 
 main_graph_col = pn.Column(
+    sidebar_col,
     graph_manager.combined_plot,
     graph_manager.debug_pane
 )
 
 template = pn.template.FastGridTemplate(
     title="CSV Visualizer",
-    sidebar=[sidebar_col],
+    #sidebar=[sidebar_col],
     main=pn.Row(
         main_graph_col
     )
