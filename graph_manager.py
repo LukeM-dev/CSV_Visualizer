@@ -100,7 +100,9 @@ class GraphManager(param.Parameterized):
             # Check that the required columns exist
             datetime_col = self.graph_editor.datetime_selector.value
             
-            if self.selected_datetime_column is not "":
+              
+            
+            if self.selected_datetime_column != '':
                 self.convert_column_to_datetime_format(self.selected_datetime_column)
             else: 
                 self.debug_pane.object = f"update combined plot: Error: could not convert datetime column"
