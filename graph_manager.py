@@ -6,7 +6,7 @@ import holoviews as hv
 import param
 from pathlib import Path
 
-from widgets import GraphEditWidget
+from graph import GraphObject
 
 class GraphManager(param.Parameterized):
     
@@ -17,7 +17,9 @@ class GraphManager(param.Parameterized):
         self.dataframes = []  # List of (DataFrame, file_name) tuples
         self.combined_plot = None
         
-        self.graph_editor = GraphEditWidget()
+        self.graph_objects = []
+        
+        self.graph_editor = GraphObject()
         self.graph_editor.datetime_selector.param.watch(self.on_datetime_column_selected, 'value')
         self.selected_datetime_column = ""
         
@@ -37,40 +39,40 @@ class GraphManager(param.Parameterized):
             if selected_column in df.columns:
                 # Convert the selected column to datetime
                 df[selected_column] = pd.to_datetime(df[selected_column], errors='coerce')
-                self.debug_pane.object = f"Converted {selected_column} to datetime for file: {file_name}"
+                self.log_error(f"Converted {selected_column} to datetime for file: {file_name}")
                 self.datetime_column_selected = True
             else:
-                self.debug_pane.object = f"{selected_column} not found in DataFrame for {file_name}"
+                self.log_error(f"{selected_column} not found in DataFrame for {file_name}")
                 self.datetime_column_selected = True
 
     def load_csv_file_data(self, file_path):
         # Check if the file exists before attempting to read it
         if not file_path.exists():
-            self.debug_pane.object = f"load_csv: File not found: {file_path}"
+            self.log_error(f"load_csv: File not found: {file_path}")
             return None
         
         if file_path.suffix != '.csv':
-            self.debug_pane.object = "load_csv: Unsupported file type. Please select a CSV file."
+            self.log_error(f"load_csv: Unsupported file type. Please select a CSV file.")
             return None
         
         try: 
             df = pd.read_csv(file_path)
                 
             if df.empty:
-                self.debug_pane.object = f"The file {file_path.name} is empty."
+                self.log_error(f"The file {file_path.name} is empty.")
                 return None
             
             self.graph_editor.datetime_selector.options = df.columns.tolist()
            
             return df
         except pd.errors.EmptyDataError:
-            self.debug_pane.object = "load_csv: Error: The file is empty or malformed."
+            self.log_error(f"load_csv: Error: The file is empty or malformed.")
             return None
         except pd.errors.ParserError as e:
-            self.debug_pane.object = f"load_csv: Error: Failed to parse the CSV file. Details: {e}"
+            self.log_error(f"load_csv: Error: Failed to parse the CSV file. Details: {e}")
             return None
         except Exception as e:
-            self.debug_pane.object = f"load_csv: An error occurred while processing the file: {e}"
+            self.log_error(f"load_csv: An error occurred while processing the file: {e}")
             return None
 
     def plot_file(self, file_path: Path, unselected=False):
@@ -100,12 +102,18 @@ class GraphManager(param.Parameterized):
             # Check that the required columns exist
             datetime_col = self.graph_editor.datetime_selector.value
             
+            x_axis_selected = self.graph_editor.x_col.value
+            y_axis_selected = self.graph_editor.y_col.value
+            
+            plot_type_selected = self.graph_editor.plot_type.value
+            
+            plot_color_selected = self.graph_editor.color.value
               
             
             if self.selected_datetime_column != '':
                 self.convert_column_to_datetime_format(self.selected_datetime_column)
             else: 
-                self.debug_pane.object = f"update combined plot: Error: could not convert datetime column"
+                self.log_error(f"update combined plot: Error: could not convert datetime column")
 
             if datetime_col and datetime_col in df.columns:
                 plot = df.hvplot(x=datetime_col, y="Temperature (°F) ", label=file_name)
@@ -132,6 +140,17 @@ class GraphManager(param.Parameterized):
         if self.combined_plot is not None and self.combined_plot is not type(str):
             self.plot_pane.object = self.combined_plot
         print(f'Update Plots: Now showing plots for {len(self.dataframes)} dataframes')
+        
+    def add_graph_object(self):
+        new_graph = GraphObject()
+        
+    # Function to log an error message to debug_pane
+    def log_error(self, message):
+        # Check if there's already content in the debug pane
+        if type(self.debug_pane.object) is type(str):  # If there's existing content (non-empty string)
+            self.debug_pane.object += f"\n\n---\n\n{message}"  # Append with a separator
+        else:
+            self.debug_pane.object = message  # Start with the new message if empty
 
     
     
