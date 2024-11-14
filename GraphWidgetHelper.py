@@ -1,94 +1,21 @@
 # Python Std. Library Imports
 from pathlib import Path
 
-# Import 3rd Party Modules
-import panel as pn
+# External Imports
 import pandas as pd
+import panel as pn
 import param
 import hvplot.pandas
-
-
-# Initialize Panel, Before Internal Imports because they sometimes use Panel
-# Potentially use 'tabulator' and 'codeeditor' extension in the future
-pn.extension(sizing_mode="stretch_width")
 
 # Constants Used
 ALLOWED_PLOT_TYPES = ['line', 'scatter', 'bar', 'area']
 
 # Folder path to monitor, and Global File Variables
 FOLDER_PATH = Path('data')
+selected_files: list[str] = []
 
-# Start Helper Methods ----------------------------------------------------------------------------- 
-def selection_in_options(selected, options) -> bool:
-    """That the selected option is within the options
-
-    Args:
-        selected (str): the selected str option thats is currently selected
-        options (list[str]): the list of options that are available to be selected 
-
-    Returns:
-        bool: true if the selected option is amoung the options, then True is returned, false is returned otherwise
-    """
-    for opt in options:
-        if selected == opt:
-            return True
-
-    return False
-
-
-def log_error(gm, message) -> None:
-    """
-    Log an error message to the debug pane.
-
-    Args:
-        message (str): The error message to log.
-    """
-    if isinstance(gm, GraphManager) is False:
-        raise RuntimeError(
-            "Attempted to log an error, but GraphManager wasn't initialized, or passed into the log_error() method.")
-
-    if isinstance(gm.debug_pane.object, str):
-        gm.debug_pane.object += f"\n\n---\n\n{message}"
-    else:
-        gm.debug_pane.object = message
-
-
-def get_files_in_folder() -> list[str]:
-    """
-    Retrieve the list of files in the specified folder.
-
-    Returns:
-        List[str]: A list of file names found in the folder.
-    """
-    return [f.name for f in FOLDER_PATH.iterdir() if f.is_file()]
-
-
-def load_csv_file(file_path) -> pd.DataFrame:
-    """
-    Load CSV data from the specified file path.
-
-    Args:
-        file_path (Path): Path to the CSV file to load.
-
-    Returns:
-        DataFrame: The loaded DataFrame if successful, None otherwise.
-    """
-    try:
-        df = pd.read_csv(file_path)
-        # TODO Provide method to modify incoming data for Data Normalization and Operations in separate file.
-        return df
-    except pd.errors.EmptyDataError as e:
-        raise pd.errors.EmptyDataError(
-            f"Load CSV Error: The file {file_path.name} is empty or malformed. Details: {e}")
-    except pd.errors.ParserError as e:
-        raise pd.errors.ParserError(
-            f"Load CSV Error: Failed to parse the CSV file {file_path.name}. Details: {e}")
-    except Exception as e:
-        raise Exception(
-            f"Load CSV Error: An error occurred while processing the file {file_path.name}: {e}")
-
-
-# End Helper Methods -------------------------------------------------------------------------------
+# File Control Widget
+file_select_checkbox_widget: pn.widgets.CheckBoxGroup
 
 # Start Data Structs -------------------------------------------------------------------------------
 class GraphManager(param.Parameterized):
@@ -135,43 +62,6 @@ class GraphControlWidget(param.Parameterized):
         """
         super().__init__(**params)
 
-class FileManager(param.Parameterized):
-    """To Hold a Record of the Selected and Unselected Files
-
-    Args:
-        param (_type_): _description_
-    """
-    file_select_checkbox_widget: pn.widgets.CheckBoxGroup
-    
-    selected_files: list[str] = []
-    unselected_files: list[str] = []
-    
-    def __init__(self, on_file_selected_callback, **params):
-        """
-        Initialize FileManager, and primarily the Widget controlling which datasets are
-        added into the graphs or not.
-
-        Args:
-            on_file_selected_callback (function): Callback to handle file selection.
-        """
-        super().__init__(**params)
-        self.file_select_checkbox_widget = pn.widgets.CheckBoxGroup(name='Select Files', options=get_files_in_folder())
-        
-        # No selected files at initialization of File Manager
-        self.selected_files = []
-        
-        # Update unselected options with all files that exist in the data folder. 
-        self.unselected_files = get_files_in_folder()
-        
-        # setup callback to hit when a new file is selected
-        self.callback = on_file_selected_callback
-    
-    def init_widget(self) -> None:
-        """
-        Update the options in the checkbox widget to reflect the current files in the folder.
-        """
-        self.file_select_checkbox_widget = pn.widgets.CheckBoxGroup(
-            name='Select Files', value=self.selected_files, options=get_files_in_folder())
 
 class GraphObject(param.Parameterized):
     """
@@ -196,22 +86,16 @@ class GraphObject(param.Parameterized):
         self.file_name = file_name
         self.on_update_callback = on_update_callback
 
-
-# Initialize GraphManager, FileManager, and Graph Control Widget Data Structs
-graph_control_widget = GraphControlWidget()
-graph_manager = GraphManager(graph_control_widget)
-
-file_manager = FileManager()
-file_manager.init_widget()
 # End Data Structs ---------------------------------------------------------------------------------
 
 def init_graph_control_widgets(gcw, 
-                               x_col_selected, 
-                               x_col_options, 
-                               y_col_selected, 
-                               y_col_options, 
+                               x_col_selected,
+                               x_col_options,
+                               y_col_selected,
+                               y_col_options,
                                plot_type_selected='scatter',
-                               color_selected='#1f77b4') -> None:
+                               color_selected='#1f77b4'
+                               ) -> None:
     """Regenerates new widgets to make sure they display the most recent options. 
 
     Args:
@@ -283,6 +167,40 @@ def get_hvplot_object(self):
     return self.plot_pane.object if isinstance(self.plot_pane.object, type(None)) else self.plot_pane.object
 
 
+def selection_in_options(selected, options) -> bool:
+    """That the selected option is within the options
+
+    Args:
+        selected (str): the selected str option thats is currently selected
+        options (list[str]): the list of options that are available to be selected 
+
+    Returns:
+        bool: true if the selected option is amoung the options, then True is returned, false is returned otherwise
+    """
+    for opt in options:
+        if selected == opt:
+            return True
+
+    return False
+
+
+def log_error(gm, message):
+    """
+    Log an error message to the debug pane.
+
+    Args:
+        message (str): The error message to log.
+    """
+    if isinstance(gm, GraphManager) is False:
+        raise RuntimeError(
+            "Attempted to log an error, but GraphManager wasn't initialized, or passed into the log_error() method.")
+
+    if isinstance(gm.debug_pane.object, str):
+        gm.debug_pane.object += f"\n\n---\n\n{message}"
+    else:
+        gm.debug_pane.object = message
+
+
 @pn.depends(graph_control_widget.x_col, graph_control_widget.y_col, graph_control_widget.plot_type, graph_control_widget.color)
 def update_combined_plot(self):
     """
@@ -300,8 +218,7 @@ def update_combined_plot(self):
         self.log_error("No plots to display.")
 
 
-@pn.depends(file_manager.file_select_checkbox_widget)
-def add_graph_object(file_select_widget):
+def add_graph_object(gm, file_path, graph_control):
     """
     Add a new GraphObject for the specified file and update axis options in the control widget.
 
@@ -309,11 +226,19 @@ def add_graph_object(file_select_widget):
         file_path (Path): Path to the CSV file to add.
         graph_control (GraphControlWidget): Reference to the control widget for updating options.
     """
-    selected_files = file_select_widget.value
-    file_manager.selected_files = selected_files
-    
+    try:
+        df = load_csv_file_data(file_path)
+    except Exception as e:
+        raise Exception(
+            f"Add Graph Object Error: An error occurred while processing the CSV file {file_path.name}: {e}")
 
-  
+    if df is not None:
+        graph_object = GraphObject(
+            dataframe=df, file_name=file_path.name, on_update_callback=update_combined_plot)
+        gm.graph_objects.append(graph_object)
+        graph_control.update_common_columns()
+        graph_control.apply_controls()  # Set up axis options for controls
+        gm.update_combined_plot()
 
 
 def remove_graph_object(gm, file_name):
@@ -343,6 +268,25 @@ def on_file_selected(file_name, unselected=False):
         remove_graph_object(graph_manager, file_name)
 
 
+def get_files_in_folder() -> list[str]:
+    """
+    Retrieve the list of files in the specified folder.
+
+    Returns:
+        List[str]: A list of file names found in the folder.
+    """
+    return [f.name for f in FOLDER_PATH.iterdir() if f.is_file()]
+
+
+def re_init_checkbox() -> None:
+    """
+    Update the options in the checkbox widget to reflect the current files in the folder.
+    """
+    global file_select_checkbox_widget
+    file_select_checkbox_widget = pn.widgets.CheckBoxGroup(
+        name='Select Files', options=get_files_in_folder())
+
+
 def on_checkbox_selection(event) -> tuple:
     """
     Callback for checkbox selection. Detects selected and unselected files, triggering actions accordingly.
@@ -352,48 +296,35 @@ def on_checkbox_selection(event) -> tuple:
     """
     current_selection = event.new
 
+    # Modify selected_files so it uses the global variable rather than the local.
+    global selected_files
+
     newly_selected_files = set(current_selection) - set(selected_files)
     unselected_files = set(selected_files) - set(current_selection)
 
     return (newly_selected_files, unselected_files)
 
 
+def load_csv_file_data(file_path):
+    """
+    Load CSV data from the specified file path.
 
+    Args:
+        file_path (Path): Path to the CSV file to load.
 
-
-
-
-# Initialize file selector checkbox widget.
-file_select_checkbox_widget: pn.widgets.CheckBoxGroup = pn.widgets.CheckBoxGroup(
-    name='Select Files', options=get_files_in_folder())
-#file_select_checkbox_widget.param.watch(on_checkbox_selection, 'value')
-
-
-# Add periodic callback to refresh the file list every 2 seconds
-pn.state.add_periodic_callback(file_manager.init_widget, period=2000)
-
-# Layout the Panel app
-sidebar_col = pn.Column(
-    pn.pane.Markdown("### File Selector"),
-    file_select_checkbox_widget,
-    pn.Column(
-        graph_control_widget.x_col,
-        graph_control_widget.y_col,
-        graph_control_widget.plot_type,
-        graph_control_widget.color
-    )
-)
-
-main_graph_col = pn.Column(
-    graph_manager.main_graph_display,
-    sizing_mode="stretch_both"
-)
-
-# Assemble and serve the full template
-template = pn.template.FastListTemplate(
-    title="CSV Visualizer",
-    sidebar=[sidebar_col],
-    main=pn.Row(
-        main_graph_col
-    )
-).servable()
+    Returns:
+        DataFrame: The loaded DataFrame if successful, None otherwise.
+    """
+    try:
+        df = pd.read_csv(file_path)
+        # TODO Provide method to modify incoming data for Data Normalization and Operations in separate file.
+        return df
+    except pd.errors.EmptyDataError as e:
+        raise pd.errors.EmptyDataError(
+            f"Load CSV Error: The file {file_path.name} is empty or malformed. Details: {e}")
+    except pd.errors.ParserError as e:
+        raise pd.errors.ParserError(
+            f"Load CSV Error: Failed to parse the CSV file {file_path.name}. Details: {e}")
+    except Exception as e:
+        raise Exception(
+            f"Load CSV Error: An error occurred while processing the file {file_path.name}: {e}")
