@@ -18,7 +18,8 @@ ALLOWED_PLOT_TYPES = ['line', 'scatter', 'bar', 'area']
 # Folder path to monitor, and Global File Variables
 FOLDER_PATH = Path('data')
 
-# Start Helper Methods ----------------------------------------------------------------------------- 
+# Start Helper Methods -----------------------------------------------------------------------------
+
 def selection_in_options(selected, options) -> bool:
     """That the selected option is within the options
 
@@ -91,6 +92,7 @@ def load_csv_file(file_path) -> pd.DataFrame:
 # End Helper Methods -------------------------------------------------------------------------------
 
 # Start Data Structs -------------------------------------------------------------------------------
+
 class GraphManager(param.Parameterized):
     """
     Manager for multiple GraphObjects, responsible for handling data loading,
@@ -135,6 +137,7 @@ class GraphControlWidget(param.Parameterized):
         """
         super().__init__(**params)
 
+
 class FileManager(param.Parameterized):
     """To Hold a Record of the Selected and Unselected Files
 
@@ -142,10 +145,10 @@ class FileManager(param.Parameterized):
         param (_type_): _description_
     """
     file_select_checkbox_widget: pn.widgets.CheckBoxGroup
-    
+
     selected_files: list[str] = []
     unselected_files: list[str] = []
-    
+
     def __init__(self, on_file_selected_callback, **params):
         """
         Initialize FileManager, and primarily the Widget controlling which datasets are
@@ -155,23 +158,25 @@ class FileManager(param.Parameterized):
             on_file_selected_callback (function): Callback to handle file selection.
         """
         super().__init__(**params)
-        self.file_select_checkbox_widget = pn.widgets.CheckBoxGroup(name='Select Files', options=get_files_in_folder())
-        
+        self.file_select_checkbox_widget = pn.widgets.CheckBoxGroup(
+            name='Select Files', options=get_files_in_folder())
+
         # No selected files at initialization of File Manager
         self.selected_files = []
-        
-        # Update unselected options with all files that exist in the data folder. 
+
+        # Update unselected options with all files that exist in the data folder.
         self.unselected_files = get_files_in_folder()
-        
+
         # setup callback to hit when a new file is selected
         self.callback = on_file_selected_callback
-    
+
     def init_widget(self) -> None:
         """
         Update the options in the checkbox widget to reflect the current files in the folder.
         """
         self.file_select_checkbox_widget = pn.widgets.CheckBoxGroup(
             name='Select Files', value=self.selected_files, options=get_files_in_folder())
+
 
 class GraphObject(param.Parameterized):
     """
@@ -196,20 +201,58 @@ class GraphObject(param.Parameterized):
         self.file_name = file_name
         self.on_update_callback = on_update_callback
 
+    def get_hvplot_object(self):
+        """
+        Retrieve the current hvplot object from the plot pane.
 
-# Initialize GraphManager, FileManager, and Graph Control Widget Data Structs
-graph_control_widget = GraphControlWidget()
-graph_manager = GraphManager(graph_control_widget)
+        Returns:
+            The hvplot object if available, None otherwise.
+        """
+        return self.plot_pane.object if isinstance(self.plot_pane.object, type(None)) else self.plot_pane.object
 
-file_manager = FileManager()
-file_manager.init_widget()
 # End Data Structs ---------------------------------------------------------------------------------
 
-def init_graph_control_widgets(gcw, 
-                               x_col_selected, 
-                               x_col_options, 
-                               y_col_selected, 
-                               y_col_options, 
+# Start Callback Methods ---------------------------------------------------------------------------
+
+
+def on_file_selected_callback(event, file_name, unselected=False):
+    """
+    Callback function for file selection. Adds or removes files from the GraphManager.
+    Callback for checkbox selection. Detects selected and unselected files, triggering actions accordingly.
+
+    Args:
+        event: Event containing the current selection of files.
+        file_name (str): Name of the file selected or deselected.
+        unselected (bool): Whether the file is being unselected.
+    """
+
+    current_selection = event.new
+
+    newly_selected_files = set(current_selection) - set(selected_files)
+    unselected_files = set(selected_files) - set(current_selection)
+
+    return (newly_selected_files, unselected_files)
+    
+    file_path = FOLDER_PATH / file_name
+    if not unselected:
+        add_graph_object(graph_manager, file_path, graph_control_widget)
+    else:
+        remove_graph_object(graph_manager, file_name)
+
+
+def on_checkbox_selection_callback(event) -> tuple:
+    
+
+# End Callback Methods -----------------------------------------------------------------------------
+
+# Start Widget Specific Methods --------------------------------------------------------------------
+
+
+def init_graph_control_widgets(gcw,
+                               x_col_selected,
+                               x_col_options,
+                               y_col_selected,
+                               y_col_options,
                                plot_type_selected='scatter',
                                color_selected='#1f77b4') -> None:
     """Regenerates new widgets to make sure they display the most recent options. 
@@ -251,6 +294,19 @@ def init_graph_control_widgets(gcw,
     # Setup ColorPicker widget
     gcw.color = pn.widgets.ColorPicker(name='Color', value=color_selected)
 
+# End Widget Specific Methods ----------------------------------------------------------------------
+
+# Start Init Data Structs --------------------------------------------------------------------------
+
+
+graph_control_widget = GraphControlWidget()
+graph_manager = GraphManager(graph_control_widget)
+
+file_manager = FileManager()
+file_manager.init_widget()
+
+# End Init Data Structs ----------------------------------------------------------------------------
+
 
 def update_plot(self, event=None):
     """
@@ -271,16 +327,6 @@ def update_plot(self, event=None):
             self.plot_pane.object = plot
         except Exception as e:
             self.log_error(f"Error creating plot: {e}")
-
-
-def get_hvplot_object(self):
-    """
-    Retrieve the current hvplot object from the plot pane.
-
-    Returns:
-        The hvplot object if available, None otherwise.
-    """
-    return self.plot_pane.object if isinstance(self.plot_pane.object, type(None)) else self.plot_pane.object
 
 
 @pn.depends(graph_control_widget.x_col, graph_control_widget.y_col, graph_control_widget.plot_type, graph_control_widget.color)
@@ -311,9 +357,6 @@ def add_graph_object(file_select_widget):
     """
     selected_files = file_select_widget.value
     file_manager.selected_files = selected_files
-    
-
-  
 
 
 def remove_graph_object(gm, file_name):
@@ -328,45 +371,10 @@ def remove_graph_object(gm, file_name):
     gm.update_combined_plot()
 
 
-def on_file_selected(file_name, unselected=False):
-    """
-    Callback function for file selection. Adds or removes files from the GraphManager.
-
-    Args:
-        file_name (str): Name of the file selected or deselected.
-        unselected (bool): Whether the file is being unselected.
-    """
-    file_path = FOLDER_PATH / file_name
-    if not unselected:
-        add_graph_object(graph_manager, file_path, graph_control_widget)
-    else:
-        remove_graph_object(graph_manager, file_name)
-
-
-def on_checkbox_selection(event) -> tuple:
-    """
-    Callback for checkbox selection. Detects selected and unselected files, triggering actions accordingly.
-
-    Args:
-        event: Event containing the current selection of files.
-    """
-    current_selection = event.new
-
-    newly_selected_files = set(current_selection) - set(selected_files)
-    unselected_files = set(selected_files) - set(current_selection)
-
-    return (newly_selected_files, unselected_files)
-
-
-
-
-
-
-
 # Initialize file selector checkbox widget.
 file_select_checkbox_widget: pn.widgets.CheckBoxGroup = pn.widgets.CheckBoxGroup(
     name='Select Files', options=get_files_in_folder())
-#file_select_checkbox_widget.param.watch(on_checkbox_selection, 'value')
+# file_select_checkbox_widget.param.watch(on_checkbox_selection, 'value')
 
 
 # Add periodic callback to refresh the file list every 2 seconds
