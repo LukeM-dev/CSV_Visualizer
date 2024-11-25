@@ -6,16 +6,17 @@ import param
 from panel.viewable import Viewer
 
 # Initialize Panel
-pn.extension('tabulator', 'codeeditor', sizing_mode="stretch_width")
+pn.extension(sizing_mode="stretch_width")
 
 # Folder path to monitor
 folder_path = Path('data')
+
 
 class SidebarWidget(param.Parameterized):
     """
     Widget for file selection in the sidebar. Allows the user to select and load CSV files.
     """
-    
+
     def __init__(self, folder_path, on_file_selected_callback, **params):
         """
         Initialize SidebarWidget.
@@ -26,11 +27,12 @@ class SidebarWidget(param.Parameterized):
         """
         super().__init__(**params)
         self.folder_path = folder_path
-        self.checkbox = pn.widgets.CheckBoxGroup(name='Select Files', options=self.get_files_in_folder())
+        self.checkbox = pn.widgets.CheckBoxGroup(
+            name='Select Files', options=self.get_files_in_folder())
         self.on_file_selected_callback = on_file_selected_callback
         self.checkbox.param.watch(self.on_checkbox_selection, 'value')
         self.selected_files = set()
-    
+
     def get_files_in_folder(self):
         """
         Retrieve the list of files in the specified folder.
@@ -54,19 +56,20 @@ class SidebarWidget(param.Parameterized):
             event: Event containing the current selection of files.
         """
         current_selection = event.new
-        newly_selected_files = set(current_selection) - set(self.selected_files)
+        newly_selected_files = set(
+            current_selection) - set(self.selected_files)
         unselected_files = set(self.selected_files) - set(current_selection)
-        
+
         # Process newly selected and unselected files
         for file_name in newly_selected_files:
             self.on_file_selected_callback(file_name)
-        
+
         for file_name in unselected_files:
             self.on_file_selected_callback(file_name, unselected=True)
-        
+
         # Update the stored selection
         self.selected_files = current_selection
-        
+
     def get_checkbox(self):
         """
         Get the checkbox widget.
@@ -75,7 +78,8 @@ class SidebarWidget(param.Parameterized):
             pn.widgets.CheckBoxGroup: The checkbox widget for selecting files.
         """
         return self.checkbox
-    
+
+
 class GraphControlWidget(param.Parameterized):
     """
     Widget for controlling graph parameters (x-axis, y-axis, plot type, and color).
@@ -83,9 +87,10 @@ class GraphControlWidget(param.Parameterized):
     """
     x_col = pn.widgets.Select(name='X-Axis', options=[])
     y_col = pn.widgets.Select(name='Y-Axis', options=[])
-    plot_type = pn.widgets.Select(name='Plot Type', options=['line', 'scatter', 'bar', 'area'], value='scatter')
+    plot_type = pn.widgets.Select(name='Plot Type', options=[
+                                  'line', 'scatter', 'bar', 'area'], value='scatter')
     color = pn.widgets.ColorPicker(name='Color', value='#1f77b4')
-    
+
     def __init__(self, graph_manager, **params):
         """
         Initialize GraphControlWidget.
@@ -95,21 +100,22 @@ class GraphControlWidget(param.Parameterized):
         """
         super().__init__(**params)
         self.graph_manager = graph_manager
-        
-        # allows for the x and y axis selectors to update the graphs whenever they change. 
+
+        # allows for the x and y axis selectors to update the graphs whenever they change.
         self.x_col.param.watch(self.apply_controls, 'value')
         self.y_col.param.watch(self.apply_controls, 'value')
-        
+
     def update_common_columns(self):
         """
         Update x_col and y_col options with common columns across all selected files.
         """
         if self.graph_manager.graph_objects:
             # Find common columns across all DataFrames in GraphObjects
-            common_columns = set(self.graph_manager.graph_objects[0].dataframe.columns)
+            common_columns = set(
+                self.graph_manager.graph_objects[0].dataframe.columns)
             for graph_obj in self.graph_manager.graph_objects[1:]:
                 common_columns.intersection_update(graph_obj.dataframe.columns)
-            
+
             # Update x_col and y_col options to the common columns
             common_columns = list(common_columns)
             self.x_col.options = common_columns
@@ -126,21 +132,21 @@ class GraphControlWidget(param.Parameterized):
         """
         for graph_obj in self.graph_manager.graph_objects:
             graph_obj.set_controls(
-                x_col=self.x_col.value, 
-                y_col=self.y_col.value, 
-                plot_type=self.plot_type.value, 
+                x_col=self.x_col.value,
+                y_col=self.y_col.value,
+                plot_type=self.plot_type.value,
                 color=self.color.value
             )
             graph_obj.update_plot()
         self.graph_manager.update_combined_plot()
-        
+
 
 class GraphManager(param.Parameterized):
     """
     Manager for multiple GraphObjects, responsible for handling data loading,
     adding/removing graphs, and updating the combined plot.
     """
-    
+
     def __init__(self, **params):
         """
         Initialize GraphManager.
@@ -161,20 +167,23 @@ class GraphManager(param.Parameterized):
         Returns:
             DataFrame: The loaded DataFrame if successful, None otherwise.
         """
-        try: 
+        try:
             df = pd.read_csv(file_path)
             if df.empty:
                 self.log_error(f"The file {file_path.name} is empty.")
                 return None
             return df
         except pd.errors.EmptyDataError:
-            self.log_error(f"Error: The file {file_path.name} is empty or malformed.")
+            self.log_error(
+                f"Error: The file {file_path.name} is empty or malformed.")
             return None
         except pd.errors.ParserError as e:
-            self.log_error(f"Error: Failed to parse the CSV file {file_path.name}. Details: {e}")
+            self.log_error(
+                f"Error: Failed to parse the CSV file {file_path.name}. Details: {e}")
             return None
         except Exception as e:
-            self.log_error(f"An error occurred while processing the file {file_path.name}: {e}")
+            self.log_error(
+                f"An error occurred while processing the file {file_path.name}: {e}")
             return None
 
     def add_graph_object(self, file_path, graph_control):
@@ -187,7 +196,8 @@ class GraphManager(param.Parameterized):
         """
         df = self.load_csv_file_data(file_path)
         if df is not None:
-            graph_object = GraphObject(dataframe=df, file_name=file_path.name, on_update_callback=self.update_combined_plot)
+            graph_object = GraphObject(
+                dataframe=df, file_name=file_path.name, on_update_callback=self.update_combined_plot)
             self.graph_objects.append(graph_object)
             graph_control.update_common_columns()
             graph_control.apply_controls()  # Set up axis options for controls
@@ -200,7 +210,8 @@ class GraphManager(param.Parameterized):
         Args:
             file_name (str): Name of the file associated with the GraphObject to remove.
         """
-        self.graph_objects = [graph_obj for graph_obj in self.graph_objects if graph_obj.file_name != file_name]
+        self.graph_objects = [
+            graph_obj for graph_obj in self.graph_objects if graph_obj.file_name != file_name]
         self.update_combined_plot()
 
     def update_combined_plot(self):
@@ -229,7 +240,8 @@ class GraphManager(param.Parameterized):
             self.debug_pane.object += f"\n\n---\n\n{message}"
         else:
             self.debug_pane.object = message
-            
+
+
 class GraphObject(param.Parameterized):
     """
     Represents an individual graph, responsible for loading data and plotting based on control settings.
@@ -238,7 +250,7 @@ class GraphObject(param.Parameterized):
     file_name = param.String()
     graph_ready = param.Boolean(default=False)
     plot_pane = pn.pane.HoloViews()
-    
+
     def __init__(self, dataframe, file_name, on_update_callback, **params):
         """
         Initialize GraphObject.
@@ -291,7 +303,9 @@ class GraphObject(param.Parameterized):
                     y=self.y_col,
                     kind=self.plot_type,
                     color=self.color,
-                    title=f"Plot for {self.file_name}"
+                    title=f"Plot for {self.file_name}",
+                    width=600,
+                    alpha=0.1
                 )
                 self.plot_pane.object = plot
             except Exception as e:
@@ -324,6 +338,8 @@ graph_manager = GraphManager()
 graph_control_widget = GraphControlWidget(graph_manager)
 
 # Define the callback for when a file is selected in the SidebarWidget
+
+
 def on_file_selected(file_name, unselected=False):
     """
     Callback function for file selection. Adds or removes files from the GraphManager.
@@ -338,16 +354,19 @@ def on_file_selected(file_name, unselected=False):
     else:
         graph_manager.remove_graph_object(file_name)
 
+
 # Initialize Widgets
-sidebar_widget = SidebarWidget(folder_path=folder_path, on_file_selected_callback=on_file_selected)
+sidebar_widget = SidebarWidget(
+    folder_path=folder_path, on_file_selected_callback=on_file_selected)
 
 # Add periodic callback to refresh the file list every 2 seconds
-pn.state.add_periodic_callback(sidebar_widget.update_checkbox_options, period=2000)
+pn.state.add_periodic_callback(
+    sidebar_widget.update_checkbox_options, period=2000)
 
 # Layout the Panel app
 sidebar_col = pn.Column(
     pn.pane.Markdown("### File Selector"),
-    sidebar_widget.get_checkbox(), 
+    sidebar_widget.get_checkbox(),
     pn.Column(
         graph_control_widget.x_col,
         graph_control_widget.y_col,
