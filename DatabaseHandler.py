@@ -1,11 +1,11 @@
-from config import USR_CONFIG, TABLE_NAMES, TABLE_TEMPLATES, ENVIRON_TABLE_LOCATION_MAPPING, CSV_TO_ENVIRON_TABLE_COLUMN_MAP
-
 # Third Party Libraries to handle using Data
 import pandas as pd  # Data Manip Tool
 import sqlite3 as db  # Data Storage Tool
 
 # Panel/Holoviz Libraries 
 import param
+
+from config import USR_CONFIG, TABLE_NAMES, TABLE_TEMPLATES, ENVIRON_TABLE_LOCATION_MAPPING, CSV_TO_ENVIRON_TABLE_COLUMN_MAP
 
 class SqlConnection(param.Parameterized):
 

@@ -1,8 +1,3 @@
-from config import USR_CONFIG, TABLE_NAMES, TABLE_TEMPLATES, ENVIRON_TABLE_LOCATION_MAPPING, CSV_TO_ENVIRON_TABLE_COLUMN_MAP
-
-# Imports from other Local Files
-from DatabaseHandler import SqlConnection
-
 # Third Party Libraries to handle using Data
 import pandas as pd  # Data Manip Tool
 import sqlite3 as db  # Data Storage Tool
@@ -19,9 +14,12 @@ pn.extension(sizing_mode="stretch_width")
 import os
 import datetime 
 
+from config import USR_CONFIG, TABLE_NAMES, TABLE_TEMPLATES, ENVIRON_TABLE_LOCATION_MAPPING, CSV_TO_ENVIRON_TABLE_COLUMN_MAP
 
+# Imports from other Local Files
+from DatabaseHandler import SqlConnection
 
-
+# ------------------------------------ LOAD DATASET ------------------------------------------
 sql_connection = SqlConnection(USR_CONFIG)
 sql_connection.init_connection()
 
@@ -32,13 +30,15 @@ params = (21611332,)
 # Call the method
 df = sql_connection.query_to_dataframe(query, params)
 
+# ------------------------------------ WIDGETS ------------------------------------------
+
 # Display the resulting DataFrame
 print(df.head())
 
 def convert_to_datetime(datetime_str: str):
     # Parse and format the date-time field
-    formatted_date = datetime.datetime.strptime( 
-    datetime_str, "%m/%d/%Y %H:%M:%S")
+    formatted_date = datetime.datetime.strptime(datetime_str,
+                                                          "%m/%d/%Y %H:%M:%S")
     return formatted_date
 
 if not df.empty:
@@ -60,7 +60,7 @@ location_select_widget = pn.widgets.MultiChoice(
 
 column_selector = pn.widgets.MultiChoice(
     name="Column MultiChoice",
-    options=sql_connection.get_column_names(TABLE_NAMES[0])
+    options=["entry_no", "datetime", "temp_F", "rh_percent", "dew_point_F", "location_id"]
 ).rx()
 
 refresh_button = pn.widgets.Button(
@@ -79,10 +79,30 @@ def load_dataframe_based_on_widget(displayible_table):
     #for col in available_cols:
         
 
-def temp_avg_temp(df):
-    return df.iloc['temp_F'].mean()
+def extract_column(df, column_name, remove_from_df=False):
+    """
+    Extract a column from a Pandas DataFrame.
 
-mean_temp_rx = pn.rx(temp_avg_temp(df=df))
+    Args:
+        df (pd.DataFrame): The DataFrame to extract the column from.
+        column_name (str): The name of the column to extract.
+        remove_from_df (bool): Whether to remove the column from the original DataFrame (default is False).
+
+    Returns:
+        pd.Series: The extracted column as a Pandas Series.
+        pd.DataFrame (optional): The modified DataFrame if remove_from_df is True.
+    """
+    if column_name not in df.columns:
+        raise KeyError(f"Column '{column_name}' not found in the DataFrame.")
+
+    column_data = df[column_name]
+    
+    if remove_from_df:
+        df.drop(columns=[column_name], inplace=True)
+        return column_data, df
+    return column_data.mean()
+
+mean_temp_rx = pn.rx(extract_column(df=df, column_name="temp_F", remove_from_df=False))
 
 template = pn.template.FastListTemplate(
     title="CSV Visualizer",
@@ -90,7 +110,8 @@ template = pn.template.FastListTemplate(
     main=pn.Row(
         column_selector,
         location_select_widget,
-        
+        start_date_widget,
+        end_date_widget,
         refresh_button,
         displayible_table
     )
