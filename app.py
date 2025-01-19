@@ -12,6 +12,7 @@ import param
 import panel as pn
 import hvplot.pandas
 
+# Important Initializer/Method Call to Setup Panel
 pn.extension(sizing_mode="stretch_width")
 
 # First Party Libraries
@@ -46,8 +47,6 @@ if not df.empty:
 print(df.head())
 print(df["datetime"].dtype)
 
-df.drop('index', axis=1, inplace=True)
-
 # Interactive widgets
 start_date_widget = pn.widgets.DatePicker(
     name="Start Date Picker", value=datetime.datetime(2024, 5, 2)).rx()
@@ -81,7 +80,7 @@ def load_dataframe_based_on_widget(displayible_table):
         
 
 def temp_avg_temp(df):
-    return df.loc[:,'temp'].mean()
+    return df.iloc['temp_F'].mean()
 
 mean_temp_rx = pn.rx(temp_avg_temp(df=df))
 
